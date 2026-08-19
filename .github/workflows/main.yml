@@ -1,0 +1,40 @@
+name: Fetch Metro Weather
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    # Daily at 1:17 AM UTC = 8:17 AM HCM (after midnight HCM, yesterday's data ready)
+    - cron: '17 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch-weather:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Fetch yesterday's weather data
+        env:
+          WEATHER_API_KEY: ${{ secrets.APP_ID_PROD }}
+        run: python3 fetch_metro_weather.py
+
+      - name: Commit and push results
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          if ls metros/*.csv 2>/dev/null; then
+              git add metros/*.csv
+          fi
+
+          git diff --staged --quiet || git commit -m "Update metro weather data - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          git push
